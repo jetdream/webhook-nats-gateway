@@ -1,0 +1,7 @@
+version: '3'
+services:
+  whatsapp-nats-gateway:
+    build: .
+    env_file:
+      - .env
+
