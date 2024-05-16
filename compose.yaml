@@ -1,6 +1,6 @@
 version: '3'
 services:
-  whatsapp-nats-gateway:
+  webhook-nats-gateway:
     build: .
     env_file:
       - .env
