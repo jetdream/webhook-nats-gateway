@@ -60,7 +60,7 @@ export class GatewayService implements IEventPublisher {
   }
 
   private async getStreamsOfInterest(): Promise<string[]> {
-    const streams: string[] = [];
+    let streams: string[] = [];
     let subjectsWithoutStream: string[] = [];
     for (const subject of this.messageProcessor.getSubjectsOfInterest()) {
       let streamName: string | null = null;
@@ -99,6 +99,9 @@ export class GatewayService implements IEventPublisher {
         streams.push(this.config.serviceId);
       }
     }
+
+    // remove duplicates
+    streams = [...new Set(streams)];
 
     return streams;
   }
