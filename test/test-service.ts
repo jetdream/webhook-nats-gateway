@@ -42,7 +42,7 @@ async function test() {
               "to": "14083865322",
               "type": "text",
               "text": {
-                body: "1Hello from WhatsApp NATS Gateway"
+                body: "1Hello from Webhook NATS Gateway"
               }
             }
           }

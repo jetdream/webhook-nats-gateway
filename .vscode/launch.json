@@ -11,6 +11,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],            
+            "preLaunchTask": "npm: build",
             "program": "${workspaceFolder}/build/src/index.js",
             "env": {
                 "NODE_ENV": "development"
@@ -23,6 +24,7 @@
           "skipFiles": [
               "<node_internals>/**"
           ],            
+          "preLaunchTask": "npm: build",
           "program": "${workspaceFolder}/build/test/test-service.js",
           "env": {
               "NODE_ENV": "development"

@@ -3,10 +3,12 @@ import { JsMsg } from "nats";
 export interface WebhookEvent {
   type: 'WebhookEvent';
   typeVersion: string;
+  requestId?: string;
   payload: {
     url: string;
     method: string;
-    contentType: string;
+    contentType?: string;
+    headers: Record<string, string>;
     body: any;
   };
 }
@@ -22,6 +24,7 @@ export interface IMessageProcessor {
   getSubjectsOfInterest(): string[];
   processMessage(message: JsMsg, data: unknown): Promise<void>;
   init(publisher: IEventPublisher): Promise<void>;
+  stop(): Promise<void>;
 }
 
 export class IncorrectMessageError extends Error {

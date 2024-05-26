@@ -54,7 +54,8 @@ async function main() {
 
     const webhookServer = new WebhookServer(
       webhookServerConfig,
-      gatewayService
+      gatewayService,
+      gatewayService.getJetStreamClient()
     );
 
     await webhookServer.start();

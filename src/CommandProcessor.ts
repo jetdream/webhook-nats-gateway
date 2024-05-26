@@ -38,4 +38,8 @@ export class WebhookCommandProcessor implements IMessageProcessor{
     // do nothing for now
 
   }
+
+  async stop() {
+    // do nothing for now
+  }
 }

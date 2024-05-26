@@ -1,3 +1,4 @@
+/* eslint-disable no-process-exit */
 /* eslint-disable no-empty */
 /* eslint-disable quotes */
 /* eslint-disable prettier/prettier */
@@ -5,6 +6,7 @@ import {AckPolicy, connect, ConnectionOptions, Consumer, ConsumerConfig, Consume
 import { IEventPublisher, IMessageProcessor, IncorrectMessageError } from './types';
 import { v4 as uuidv4 }  from 'uuid';
 import { debugLog } from './utils';
+import { getLocalIP } from './libs/connectivity';
 
 export interface GatewayServiceConfig {
   serviceId: string;
@@ -13,9 +15,9 @@ export interface GatewayServiceConfig {
 }
 
 export class GatewayService implements IEventPublisher {
-  private conn: NatsConnection | null = null;
-  private jsm: JetStreamManager | null = null;
-  private js: JetStreamClient | null = null;
+  private conn!: NatsConnection;
+  private jsm!: JetStreamManager;
+  private js!: JetStreamClient;
   private consumers: Consumer[] = [];
   private consumersMessages: ConsumerMessages[] = [];
   private consumersStopped = 0;
@@ -43,6 +45,11 @@ export class GatewayService implements IEventPublisher {
     private connectionOptions: ConnectionOptions,
     private messageProcessor: IMessageProcessor,
   ) {
+  }
+
+  getJetStreamClient(): JetStreamClient {
+    if (!this.js) throw new Error('JetStream client is not available');
+    return this.js;
   }
 
   private async connectToNatsServers(): Promise<NatsConnection> {
@@ -261,8 +268,75 @@ export class GatewayService implements IEventPublisher {
     })()
   }
 
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+
+  private async singleton() {
+
+    const serviceInstanceId = uuidv4();
+    const serviceInstanceRecordObject = {
+      started: +new Date(),
+      ip: getLocalIP(),
+      serviceInstanceId,
+    }
+
+    // optimistic claim of the service is started using NATS KV store with revisions
+    let serviceInstancesKV = await this.js.views.kv('active-services');
+    let currentService = await serviceInstancesKV.get(this.config.serviceId);
+    if (currentService?.operation == "PUT" && currentService.value) {
+      let currentServiceRecord = currentService.json() as typeof serviceInstanceRecordObject;
+      console.error(`Another instance of service ${this.config.serviceId} is already running on ${currentServiceRecord.ip} `);
+      await this.publish(`${this.config.serviceId}.event.service.start_failed`, { reason: 'Another instance is already running', current: currentService.json(), new: serviceInstanceRecordObject});
+      process.exit();
+    }
+    
+    try {
+      let serviceInstanceRecord = JSON.stringify(serviceInstanceRecordObject);
+      await serviceInstancesKV.put(this.config.serviceId, serviceInstanceRecord, { previousSeq: currentService?.revision || undefined });
+      console.log('Service instance claimed: ', serviceInstanceId);
+      
+      this.heartbeatInterval = setInterval(async () => {
+        try {
+          let kvStoredServiceInstanceEntry = await serviceInstancesKV.get(this.config.serviceId);
+          
+          if (kvStoredServiceInstanceEntry) {
+            let record = kvStoredServiceInstanceEntry.json() as typeof serviceInstanceRecordObject;
+            if (record.serviceInstanceId !== serviceInstanceId) throw new Error('Service instance record does not match the current instance');
+            // update the record
+            await serviceInstancesKV.put(this.config.serviceId, serviceInstanceRecord, { previousSeq: kvStoredServiceInstanceEntry.revision });
+          } else {            
+            if (process.env.NODE_ENV !== 'development') throw new Error('Service instance record not found in KV store');
+            // In development mode, try to put the record again without the revision check
+            await serviceInstancesKV.put(this.config.serviceId, serviceInstanceRecord);
+          }
+
+          // console.debug('Service instance claim renewed');
+
+        } catch (err) {
+          console.error('Error updating service instance record:', err);
+          clearInterval(this.heartbeatInterval!);
+          await this.publish(
+            `${this.config.serviceId}.event.service.terminated`,
+            { reason: 'Failed to renew a claim', current: serviceInstanceRecordObject, error: (err as Error).message ?? "Unknown error" }
+          );
+
+          process.exit(0);
+        }
+      }, 5*1000); // 5 seconds
+
+    } catch (err) {
+      console.error('Error claiming the service, another instance has started in the meantime');
+      process.exit(0);
+    }
+  }
+
+  cancelSingleton() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+  }
+
   async start() {
-    console.log('Whatsapp NATS Gateway is starting...');
+    console.log('Webhook NATS Gateway is starting...');
     this.conn = await this.connectToNatsServers();
     this.setupTelemetry();
 
@@ -279,6 +353,8 @@ export class GatewayService implements IEventPublisher {
     } catch (err) {
       throw new Error('Error connecting to JetStream');
     }
+
+    await this.singleton();
 
     await this.messageProcessor.init(this);
     console.log('Listening for messages:');
@@ -333,6 +409,9 @@ export class GatewayService implements IEventPublisher {
   async stop() {
     this.stopped = true;
     await this.stopConsumers();
+    await this.messageProcessor.stop();
+
+    this.cancelSingleton();
 
     await this.conn!.drain();
     await this.conn!.close();
@@ -343,6 +422,9 @@ export class GatewayService implements IEventPublisher {
 
   async pause() {
     await this.stopConsumers();
+    await this.messageProcessor.stop();
+
+    this.cancelSingleton();
 
     // wait for NATS command to resume
     const subscription: Subscription = this.conn!.subscribe(this.serviceResumeNatsCommand);
