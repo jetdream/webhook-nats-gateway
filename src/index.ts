@@ -20,8 +20,6 @@ const NATS_SERVERS_CONFIG = envStr('NATS_SERVERS_CONFIG', 'NATS servers configur
 // Webhook general parameters
 const LISTEN_PORT = envInt('LISTEN_PORT', 'listen port');
 
-// Webhook service-specific parameters
-const WEBHOOK_ENDPOINT = envStr('WEBHOOK_ENDPOINT', 'Root webhook endpoint');
 
 
 async function main() {
@@ -48,7 +46,6 @@ async function main() {
     const webhookServerConfig: WebHookServerConfig = {
       port: LISTEN_PORT,
       service: SERVICE_ID,
-      webhookEndpoint: WEBHOOK_ENDPOINT,
       healthEndpoint: HEALTH_ENDPOINT,
     };
 

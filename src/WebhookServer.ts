@@ -10,7 +10,6 @@ import { Request, Response } from 'express';
 export interface WebHookServerConfig {
   service: string;
   port: number;
-  webhookEndpoint: string;
   healthEndpoint: string;
 }
 
@@ -182,7 +181,6 @@ export class WebhookServer {
     this.server = this.app.listen(this.app.get('port'), () => {
       console.log('WebhookServer started:');
       console.log('  - Port: ', this.app.get('port'));
-      console.log('  - Webhook endpoint: ', this.config.webhookEndpoint);
     });
 
     this.webEndpoints = await this.jetStreamClient.views.kv('web_endpoints');
