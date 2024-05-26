@@ -1,6 +1,7 @@
 # Webhook-NATS-Gateway
 
 The Webhook-NATS-Gateway is a simple gateway that listens for incoming HTTP calls and passes them to NATS Jetstream server
+Endpoints are defined in NATS JetStream KV store.
 
 Make sure all the required environment variables are set before running the gateway.
 See the `.env.example` file for the required environment variables.
