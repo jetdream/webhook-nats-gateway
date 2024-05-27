@@ -77,12 +77,22 @@ export class WebhookServer {
         const descriptor = JSONCodec().decode(endpointDescriptor.value) as EndpointDescriptor;
 
         // check for origins including '*'
-        if (descriptor.allowedOrigins && descriptor.allowedOrigins.length > 0) {
-          const origin = req.get('Origin')?.toLowerCase();
-          if (origin && !descriptor.allowedOrigins.includes(origin) && !descriptor.allowedOrigins.includes('*')) {
-            res.sendStatus(403); // Forbidden
-            return;
-          }
+        const origin = req.get('Origin')?.toLowerCase();
+        const allowedOrigins = descriptor.allowedOrigins ?? ['*'];
+        const isOriginAllowed = allowedOrigins.includes('*') || (origin && allowedOrigins.includes(origin));
+
+        if (!isOriginAllowed) {
+          res.sendStatus(403); // Forbidden
+          return;
+        }
+
+        // Handle preflight requests
+        if (req.method === 'OPTIONS') {
+          res.header('Access-Control-Allow-Origin', origin || '*');
+          res.header('Access-Control-Allow-Methods', descriptor.methods.join(','));
+          res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+          res.sendStatus(204); // No Content
+          return;
         }
 
         // check for allowed methods
@@ -97,6 +107,11 @@ export class WebhookServer {
         }
 
         const contentType = req.get('Content-Type');
+
+        // Add CORS headers to actual requests
+        res.header('Access-Control-Allow-Origin', origin || '*');
+        res.header('Access-Control-Allow-Methods', descriptor.methods.join(','));
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
         if (descriptor.type === 'event') {
           const subjectEventWebhook = `${this.config.service}.event.${descriptor.entity}.received`;
@@ -151,7 +166,6 @@ export class WebhookServer {
 
             res.status(response.payload.status).json(response.payload.body);
 
-
           } catch (err) {
 
             console.error('Error:', err);
@@ -171,7 +185,6 @@ export class WebhookServer {
     });
 
   }
-
 
   getEventsToPublish(): string[] {
     return [`${this.config.service}.event.*.received`];
