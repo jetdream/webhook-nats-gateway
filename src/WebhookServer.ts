@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import bodyParser from 'body-parser';
 import express, { Application, NextFunction } from 'express';
-import { IEventPublisher, WebhookEvent } from './types';
+import { IEventPublisher, WebhookEvent, WebhookResponseEvent } from './types';
 import { JetStreamClient, JSONCodec, KV } from 'nats';
 import { v4 as uuidv4 } from 'uuid';
 import { TimeoutError, waitForJSMessage } from './libs/connectivity';
@@ -147,9 +147,9 @@ export class WebhookServer {
             await this.eventPublisher.publish(subjectRequestWebhook, message);
 
             // wait for response
-            const response = (await waitPromise.promise) || {} as any;
+            const response = (await waitPromise.promise) as WebhookResponseEvent;
 
-            res.status(200).json(response.payload);
+            res.status(response.payload.status).json(response.payload.body);
 
 
           } catch (err) {

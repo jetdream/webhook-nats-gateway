@@ -13,6 +13,13 @@ export interface WebhookEvent {
   };
 }
 
+export interface WebhookResponseEvent {
+  payload: {
+    status: number;
+    body: any;
+  };
+}
+
 /**
  * Interface for event publishers.
  */
