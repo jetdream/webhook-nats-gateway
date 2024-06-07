@@ -164,7 +164,30 @@ export class WebhookServer {
             // wait for response
             const response = (await waitPromise.promise) as WebhookResponseEvent;
 
-            res.status(response.payload.status).json(response.payload.body);
+            {
+              let contentType = response.payload.contentType;
+              if (!contentType && typeof response.payload.body === 'object') {
+                contentType = 'application/json';
+              } else {
+                contentType = contentType || 'text/plain';
+              }
+
+              res.header('Content-Type', response.payload.contentType);
+
+              if (response.payload.headers) {
+                for (const key in response.payload.headers) {
+                  res.header(key, response.payload.headers[key]);
+                }
+              }
+
+              if (typeof response.payload.body === 'string') {
+                res.status(response.payload.status).send(response.payload.body);
+              } else if (contentType === 'application/json' && response.payload.body === 'object') {
+                res.status(response.payload.status).json(response.payload.body);
+              } else {
+                throw new Error('Invalid response body');
+              }
+            }
 
           } catch (err) {
 

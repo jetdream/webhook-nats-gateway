@@ -1,4 +1,4 @@
-import { JsMsg } from "nats";
+import {JsMsg} from 'nats';
 
 export interface WebhookEvent {
   type: 'WebhookEvent';
@@ -16,6 +16,8 @@ export interface WebhookEvent {
 export interface WebhookResponseEvent {
   payload: {
     status: number;
+    contentType?: string; // default to application/json
+    headers?: Record<string, string>;
     body: any;
   };
 }
