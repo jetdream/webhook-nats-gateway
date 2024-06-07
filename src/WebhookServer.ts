@@ -172,8 +172,6 @@ export class WebhookServer {
                 contentType = contentType || 'text/plain';
               }
 
-              res.header('Content-Type', response.payload.contentType);
-
               if (response.payload.headers) {
                 for (const key in response.payload.headers) {
                   res.header(key, response.payload.headers[key]);
@@ -181,6 +179,7 @@ export class WebhookServer {
               }
 
               if (typeof response.payload.body === 'string') {
+                res.set('Content-Type', contentType);
                 res.status(response.payload.status).send(response.payload.body);
               } else if (contentType === 'application/json' && typeof response.payload.body === 'object') {
                 res.status(response.payload.status).json(response.payload.body);
