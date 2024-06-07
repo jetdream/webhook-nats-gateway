@@ -185,6 +185,7 @@ export class WebhookServer {
               } else if (contentType === 'application/json' && response.payload.body === 'object') {
                 res.status(response.payload.status).json(response.payload.body);
               } else {
+                console.error('Invalid response body:', { contentType, body: response.payload.body });
                 throw new Error('Invalid response body');
               }
             }
