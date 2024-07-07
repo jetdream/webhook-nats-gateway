@@ -2,7 +2,7 @@
 /* eslint-disable no-empty */
 /* eslint-disable quotes */
 /* eslint-disable prettier/prettier */
-import {AckPolicy, connect, ConnectionOptions, Consumer, ConsumerConfig, ConsumerEvents, ConsumerMessages, JetStreamClient, JetStreamManager, JsMsg, NatsConnection, StreamConfig, Subscription} from 'nats';
+import {AckPolicy, connect, ConnectionOptions, Consumer, ConsumerConfig, ConsumerEvents, ConsumerMessages, JetStreamClient, JetStreamManager, JsMsg, KV, NatsConnection, StreamConfig, Subscription} from 'nats';
 import { IEventPublisher, IMessageProcessor, IncorrectMessageError } from './types';
 import { v4 as uuidv4 }  from 'uuid';
 import { debugLog } from './utils';
@@ -280,30 +280,30 @@ export class GatewayService implements IEventPublisher {
     }
 
     // optimistic claim of the service is started using NATS KV store with revisions
-    let serviceInstancesKV = await this.js.views.kv('active-services');
-    let currentService = await serviceInstancesKV.get(this.config.serviceId);
-    if (currentService?.operation == "PUT" && currentService.value) {
-      let currentServiceRecord = currentService.json() as typeof serviceInstanceRecordObject;
+    const serviceInstancesKV: KV = await this.js.views.kv('active-services', {ttl: 10_000, history: 1});
+    const currentService = await serviceInstancesKV.get(this.config.serviceId);
+    if (currentService?.operation === "PUT" && currentService.value) {
+      const currentServiceRecord = currentService.json() as typeof serviceInstanceRecordObject;
       console.error(`Another instance of service ${this.config.serviceId} is already running on ${currentServiceRecord.ip} `);
       await this.publish(`${this.config.serviceId}.event.service.start_failed`, { reason: 'Another instance is already running', current: currentService.json(), new: serviceInstanceRecordObject});
       process.exit();
     }
-    
+
     try {
-      let serviceInstanceRecord = JSON.stringify(serviceInstanceRecordObject);
+      const serviceInstanceRecord = JSON.stringify(serviceInstanceRecordObject);
       await serviceInstancesKV.put(this.config.serviceId, serviceInstanceRecord, { previousSeq: currentService?.revision || undefined });
       console.log('Service instance claimed: ', serviceInstanceId);
-      
+
       this.heartbeatInterval = setInterval(async () => {
         try {
-          let kvStoredServiceInstanceEntry = await serviceInstancesKV.get(this.config.serviceId);
-          
+          const kvStoredServiceInstanceEntry = await serviceInstancesKV.get(this.config.serviceId);
+
           if (kvStoredServiceInstanceEntry) {
-            let record = kvStoredServiceInstanceEntry.json() as typeof serviceInstanceRecordObject;
+            const record = kvStoredServiceInstanceEntry.json() as typeof serviceInstanceRecordObject;
             if (record.serviceInstanceId !== serviceInstanceId) throw new Error('Service instance record does not match the current instance');
             // update the record
             await serviceInstancesKV.put(this.config.serviceId, serviceInstanceRecord, { previousSeq: kvStoredServiceInstanceEntry.revision });
-          } else {            
+          } else {
             if (process.env.NODE_ENV !== 'development') throw new Error('Service instance record not found in KV store');
             // In development mode, try to put the record again without the revision check
             await serviceInstancesKV.put(this.config.serviceId, serviceInstanceRecord);
