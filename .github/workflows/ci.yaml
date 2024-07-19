@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-      - dev
-      - staging
 
 jobs:
   build-and-push:
@@ -36,22 +34,16 @@ jobs:
 
 # Update ArgoCD application configuration
 
-      - name: Check if yq is installed
-        id: check_yq
+      - name: Set up yq
         run: |
           if ! command -v yq &> /dev/null; then
-            echo "yq not found"
-            echo "install_yq=true" >> $GITHUB_ENV
+            echo "yq not found, installing..."
+            wget https://github.com/mikefarah/yq/releases/download/v4.44.2/yq_linux_amd64 -O yq
+            chmod +x yq
+            echo "${{ github.workspace }}/yq" >> $GITHUB_PATH
           else
             echo "yq is already installed"
-            echo "install_yq=false" >> $GITHUB_ENV
           fi
-
-      - name: Install yq
-        if: env.install_yq == 'true'
-        run: |
-          sudo wget https://github.com/mikefarah/yq/releases/download/v4.44.2/yq_linux_amd64 -O /usr/bin/yq
-          sudo chmod +x /usr/bin/yq
 
       - name: Clone config repository
         uses: actions/checkout@v4
