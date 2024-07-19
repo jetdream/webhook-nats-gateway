@@ -64,7 +64,7 @@ jobs:
       - name: Update kustomization.yaml for dev
         run: |
           cd .tf-cluster/config/overlays/dev
-          yq e '.images[] |= select(.name == "registry.digitalocean.com/targetflow/webhook-nats-gateway").newTag = "dev-${{ github.sha }}"' -i kustomization.yaml
+          yq e '.images[] |= select(.name == "${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}").newTag = "main-${{ github.sha }}"' -i kustomization.yaml
 
       - name: Commit and push changes
         run: |
