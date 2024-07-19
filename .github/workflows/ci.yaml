@@ -24,13 +24,17 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Extract timestamp
+        id: timestamp
+        run: echo "::set-output name=ts::$(date +'%y%m%d.%H%M')"
+
       - name: Build and push API Docker image
         uses: docker/build-push-action@v2
         with:
           push: true
           tags: |
             ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}:latest
-            ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}:${{ github.ref_name }}-${{ github.sha }}
+            ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}:${{ github.ref_name }}-${{ steps.timestamp.outputs.ts }}-${{ github.sha }}
 
 # Update ArgoCD application configuration
 
@@ -56,7 +60,7 @@ jobs:
       - name: Update kustomization.yaml for dev
         run: |
           cd .tf-cluster/config/overlays/dev
-          yq e '.images[] |= select(.name == "${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}").newTag = "main-${{ github.sha }}"' -i kustomization.yaml
+          yq e '.images[] |= select(.name == "${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}").newTag = "${{ github.ref_name }}-${{ steps.timestamp.outputs.ts }}-${{ github.sha }}"' -i kustomization.yaml
 
       - name: Commit and push changes
         run: |
