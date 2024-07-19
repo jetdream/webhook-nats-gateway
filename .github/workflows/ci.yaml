@@ -74,4 +74,3 @@ jobs:
           git add config/overlays/dev/kustomization.yaml 
           git commit -m "Update image tags to ${{ github.sha }}"
           git push
-
