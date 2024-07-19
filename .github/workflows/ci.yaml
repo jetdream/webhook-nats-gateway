@@ -56,9 +56,10 @@ jobs:
       - name: Clone config repository
         uses: actions/checkout@v4
         with:
-          repository: jetdream/tf-cluster.git
+          repository: https://github.com/jetdream/tf-cluster.git
           ref: main
           path: .tf-cluster
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update kustomization.yaml for dev
         run: |
