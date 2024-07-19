@@ -34,3 +34,45 @@ jobs:
             ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}:latest
             ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}:${{ github.ref_name }}-${{ github.sha }}
 
+# Update ArgoCD application configuration
+
+      - name: Check if yq is installed
+        id: check_yq
+        run: |
+          if ! command -v yq &> /dev/null; then
+            echo "yq not found"
+            echo "install_yq=true" >> $GITHUB_ENV
+          else
+            echo "yq is already installed"
+            echo "install_yq=false" >> $GITHUB_ENV
+          fi
+
+      - name: Install yq
+        if: env.install_yq == 'true'
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/download/v4.44.2/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+
+      - name: Clone config repository
+        uses: actions/checkout@v2
+        with:
+          repository: jetdream/tf-cluster
+          path: tf-cluster
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update kustomization.yaml for dev
+        run: |
+          cd tf-cluster/config/overlays/dev
+          yq e '.images[] |= select(.name == "registry.digitalocean.com/targetflow/webhook-nats-gateway").newTag = "dev-${{ github.sha }}"' -i kustomization.yaml
+
+      - name: Commit and push changes
+        run: |
+          cd config-repo
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add dev/kustomization.yaml staging/kustomization.yaml prod/kustomization.yaml
+          git commit -m "Update image tags to ${{ github.sha }}"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
