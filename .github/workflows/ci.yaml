@@ -54,25 +54,23 @@ jobs:
           sudo chmod +x /usr/bin/yq
 
       - name: Clone config repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: jetdream/tf-cluster
-          path: tf-cluster
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+          path: .tf-cluster
 
       - name: Update kustomization.yaml for dev
         run: |
-          cd tf-cluster/config/overlays/dev
+          cd .tf-cluster/config/overlays/dev
           yq e '.images[] |= select(.name == "registry.digitalocean.com/targetflow/webhook-nats-gateway").newTag = "dev-${{ github.sha }}"' -i kustomization.yaml
 
       - name: Commit and push changes
         run: |
-          cd config-repo
+          cd .tf-cluster
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add dev/kustomization.yaml staging/kustomization.yaml prod/kustomization.yaml
+          git add config/overlays/dev/kustomization.yaml 
           git commit -m "Update image tags to ${{ github.sha }}"
-          git push origin main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git push
 
