@@ -59,7 +59,7 @@ jobs:
           repository: jetdream/tf-cluster
           ref: main
           path: .tf-cluster
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.TF_CLUSTER_GITHUB_KEY }}
 
       - name: Update kustomization.yaml for dev
         run: |
