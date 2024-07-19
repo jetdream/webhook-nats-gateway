@@ -1,3 +1,16 @@
+# This pipeline is generic and can be used for most of the Targetflow projects
+# It depends on the following secrets:
+# - DOCKER_USERNAME
+# - DOCKER_PASSWORD
+# - TF_CLUSTER_GITHUB_KEY (Personal access token with repo scope to update the ArgoCD configuration)
+# and vars:
+# - REGISTRY
+# - IMAGE_NAME
+
+# The image name is generated as follows:
+# $REGISTRY/$IMAGE_NAME:latest
+# $REGISTRY/$IMAGE_NAME:<branch-name>-<timestamp>-<commit-sha>  
+
 name: CI Pipeline
 
 on:
@@ -7,8 +20,8 @@ on:
 
 jobs:
   build-and-push:
-    # runs-on: ubuntu-latest
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    # runs-on: self-hosted
 
     steps:
       - name: Checkout code
